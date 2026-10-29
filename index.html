@@ -12,7 +12,7 @@
    Dizayn: zamonaviy ko'k-indigo ton, qorong'i fon, aniq kontrast.
    Ma'lumotlar: Supabase (Postgres) jadvalidan to'g'ridan-to'g'ri, real
    vaqtda. Layout: tepada sticky sarlavha+statistika, uch ko'rinish
-   (Qidiruv / QR skaner / Kutubxonachi) tab orqali almashadi.
+   (Qidiruv / Kutubxonachi) tab orqali almashadi.
 --------------------------------------------------------------------- */
 :root{
   --bg:#0a0f1e;
@@ -145,19 +145,12 @@ section.view{padding-top:18px;}
 .pager button:disabled{opacity:.35; cursor:default;}
 .pager .pg-info{color:var(--muted); font-size:13px; font-family:'IBM Plex Mono',monospace;}
 
-/* --- QR skaner / umumiy panel --- */
+/* --- Umumiy panel --- */
 .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 18px 20px;}
 .panel + .panel{margin-top:14px;}
 .panel h2{font-size:17px; margin-bottom:10px;}
 .note{font-size:13px; color:var(--muted); line-height:1.55;}
 .note strong{color:var(--fg);}
-
-.scan-stage{position:relative; width:100%; max-width:420px; margin:14px auto 0; aspect-ratio:3/4;
-  background:#000; border-radius:12px; overflow:hidden; display:none;}
-.scan-stage.on{display:block;}
-.scan-stage video{width:100%; height:100%; object-fit:cover; display:block;}
-.scan-reticle{position:absolute; inset:14%; border:2px solid var(--accent); border-radius:16px;
-  box-shadow:0 0 0 2000px rgba(0,0,0,.35); pointer-events:none;}
 
 .btn{
   appearance:none; border:none; border-radius:10px; font:inherit; font-weight:600; font-size:14px;
@@ -244,7 +237,6 @@ section.view{padding-top:18px;}
     <div class="stats" id="statsLine"></div>
     <nav class="tabs">
       <button class="tab-btn active" data-tab="search" type="button">🔍 Qidiruv</button>
-      <button class="tab-btn" data-tab="scan" type="button">📷 QR skaner</button>
       <button class="tab-btn" data-tab="lib" id="libTabBtn" type="button" hidden>🗂 Kutubxonachi</button>
     </nav>
   </header>
@@ -264,33 +256,6 @@ section.view{padding-top:18px;}
       <div>Hech narsa topilmadi. Boshqa kalit so'z bilan urinib ko'ring.</div>
     </div>
     <div class="pager" id="pager"></div>
-  </section>
-
-  <section class="view" id="view-scan" hidden>
-    <div class="panel">
-      <h2>Kamera bilan skanerlash</h2>
-      <p class="note">Kitobga yopishtirilgan QR yorliqni telefon yoki kompyuter kamerasi bilan skanerlang —
-        mos kitob darhol shu yerda ochiladi. <strong>Eslatma:</strong> kamera faqat sahifa <strong>https</strong>
-        orqali (yoki localhost'da) ochilganda ishlaydi — faylni to'g'ridan-to'g'ri ochganda (file://) brauzer
-        kamerani bermaydi, buni biror hostingga (masalan o'zingizning saytingizga) joylashtirgandan keyin sinab ko'ring.</p>
-      <div class="btn-row">
-        <button class="btn btn-accent" id="startScanBtn" type="button">📷 Kamerani yoqish</button>
-        <button class="btn btn-ghost" id="stopScanBtn" type="button" hidden>⏹ To'xtatish</button>
-      </div>
-      <div class="scan-stage" id="scanStage">
-        <video id="scanVideo" playsinline muted></video>
-        <div class="scan-reticle"></div>
-      </div>
-      <div class="scan-msg" id="scanMsg"></div>
-    </div>
-    <div class="panel">
-      <h2>Qo'lda kiritish</h2>
-      <p class="note">QR ishlamasa, yorliq ostidagi raqamni (ID) shu yerga yozing.</p>
-      <div class="manual-row">
-        <input id="manualIdInput" type="text" inputmode="numeric" placeholder="Masalan: 1320">
-        <button class="btn btn-ghost" id="manualGoBtn" type="button">Ko'rsat</button>
-      </div>
-    </div>
   </section>
 
   <section class="view" id="view-lib" hidden>
@@ -371,7 +336,6 @@ section.view{padding-top:18px;}
 <div class="site-footer">Developed by Enzo DI 81-26</div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 (function(){
@@ -581,107 +545,13 @@ document.addEventListener("keydown", function(e){
 
 /* ---------------- Tabs ---------------- */
 var tabBtns = Array.prototype.slice.call(document.querySelectorAll(".tab-btn"));
-var views = { search: document.getElementById("view-search"), scan: document.getElementById("view-scan"), lib: document.getElementById("view-lib") };
+var views = { search: document.getElementById("view-search"), lib: document.getElementById("view-lib") };
 function switchTab(tab){
   tabBtns.forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-tab") === tab); });
   Object.keys(views).forEach(function(k){ views[k].hidden = (k !== tab); });
-  if (tab !== "scan") stopScan();
 }
 tabBtns.forEach(function(btn){
   btn.addEventListener("click", function(){ switchTab(btn.getAttribute("data-tab")); });
-});
-
-/* ---------------- Kamera skaneri ---------------- */
-var scanStage = document.getElementById("scanStage");
-var scanVideo = document.getElementById("scanVideo");
-var scanMsg = document.getElementById("scanMsg");
-var startBtn = document.getElementById("startScanBtn");
-var stopBtn = document.getElementById("stopScanBtn");
-var scanCanvas = document.createElement("canvas");
-var scanCtx = scanCanvas.getContext("2d", { willReadFrequently: true });
-var scanStream = null;
-var scanRaf = null;
-
-function setScanMsg(text, kind){
-  scanMsg.textContent = text || "";
-  scanMsg.className = "scan-msg" + (kind ? " " + kind : "");
-}
-
-function extractBookId(text){
-  if (!text) return null;
-  var m = text.match(/[?&]book=(\d+)/);
-  if (m) return parseInt(m[1], 10);
-  if (/^\d+$/.test(text.trim())) return parseInt(text.trim(), 10);
-  return null;
-}
-
-function tick(){
-  if (!scanStream) return;
-  if (scanVideo.readyState === scanVideo.HAVE_ENOUGH_DATA) {
-    scanCanvas.width = scanVideo.videoWidth;
-    scanCanvas.height = scanVideo.videoHeight;
-    scanCtx.drawImage(scanVideo, 0, 0, scanCanvas.width, scanCanvas.height);
-    var imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
-    var result = null;
-    try { result = jsQR(imageData.data, imageData.width, imageData.height); } catch (e) {}
-    if (result && result.data) {
-      var id = extractBookId(result.data);
-      if (id != null && BOOKS.some(function(b){ return b.id === id; })) {
-        setScanMsg("✅ Topildi!", "ok");
-        stopScan();
-        showDetail(id);
-        return;
-      } else {
-        setScanMsg("QR o'qildi, lekin bu katalogga tegishli emas.", "err");
-      }
-    }
-  }
-  scanRaf = requestAnimationFrame(tick);
-}
-
-function startScan(){
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    setScanMsg("Bu brauzer kamerani qo'llamaydi yoki sahifa xavfsiz (https) kontekstda emas.", "err");
-    return;
-  }
-  setScanMsg("Kamera ruxsatini so'rayapmiz...");
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-    .then(function(stream){
-      scanStream = stream;
-      scanVideo.srcObject = stream;
-      scanVideo.play();
-      scanStage.classList.add("on");
-      startBtn.hidden = true;
-      stopBtn.hidden = false;
-      setScanMsg("Kameraga QR kodni ko'rsating...");
-      scanRaf = requestAnimationFrame(tick);
-    })
-    .catch(function(err){
-      setScanMsg("Kameraga ruxsat berilmadi yoki topilmadi (" + err.name + "). Sahifa https orqali ochilganini tekshiring.", "err");
-    });
-}
-
-function stopScan(){
-  if (scanRaf) cancelAnimationFrame(scanRaf);
-  scanRaf = null;
-  if (scanStream) {
-    scanStream.getTracks().forEach(function(t){ t.stop(); });
-    scanStream = null;
-  }
-  scanStage.classList.remove("on");
-  startBtn.hidden = false;
-  stopBtn.hidden = true;
-}
-
-startBtn.addEventListener("click", startScan);
-stopBtn.addEventListener("click", function(){ stopScan(); setScanMsg(""); });
-
-document.getElementById("manualGoBtn").addEventListener("click", function(){
-  var input = document.getElementById("manualIdInput");
-  var id = extractBookId(input.value);
-  if (id == null) { setScanMsg("Raqamni to'g'ri kiriting."); return; }
-  if (!BOOKS.some(function(b){ return b.id === id; })) { setScanMsg("Bu ID bo'yicha kitob topilmadi.", "err"); return; }
-  showDetail(id);
 });
 
 /* ---------------- Kutubxonachi: kirish / chiqish ---------------- */
