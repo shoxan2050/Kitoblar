@@ -9,24 +9,25 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 /* ---------------------------------------------------------------------
-   Dizayn: eski kutubxona kartotekasi — chiroq yorug'ida, jigarrang-qora
-   fon, jez (brass) urg'u, kartotekadagi kartochkalarga xos serif+mono.
-   Layout: tepada sticky sarlavha+statistika, ikki ko'rinish (Qidiruv /
-   QR skaner) tab orqali almashadi, natijalar panel-kartalar to'ri.
+   Dizayn: zamonaviy ko'k-indigo ton, qorong'i fon, aniq kontrast.
+   Ma'lumotlar: Supabase (Postgres) jadvalidan to'g'ridan-to'g'ri, real
+   vaqtda. Layout: tepada sticky sarlavha+statistika, uch ko'rinish
+   (Qidiruv / QR skaner / Kutubxonachi) tab orqali almashadi.
 --------------------------------------------------------------------- */
 :root{
-  --bg:#171310;
-  --surface:#211b15;
-  --surface-2:#2a2219;
-  --fg:#f1e8d6;
-  --muted:#aa9f8c;
-  --accent:#caa23a;
-  --accent-ink:#1b1507;
-  --border:#3b3123;
-  --good:#8fae72;
-  --cat-general:#caa23a;
-  --cat-fiction:#6fa08f;
-  --cat-political:#b3755f;
+  --bg:#0a0f1e;
+  --surface:#111a30;
+  --surface-2:#16213d;
+  --fg:#e9edf7;
+  --muted:#8993b3;
+  --accent:#4f6ef0;
+  --accent-ink:#ffffff;
+  --border:#22304f;
+  --good:#5fd0a5;
+  --bad:#e08a8a;
+  --cat-general:#3b66c9;
+  --cat-fiction:#2f9bb0;
+  --cat-political:#7265d1;
   color-scheme:dark;
 }
 *{box-sizing:border-box;}
@@ -44,7 +45,7 @@ img{max-width:100%;}
 [hidden]{display:none!important;}
 a{color:var(--accent);}
 
-.wrap{max-width:980px; margin:0 auto; padding-block:20px 60px;}
+.wrap{max-width:980px; margin:0 auto; padding-block:20px 10px;}
 
 header.top{
   position:sticky; top:0; z-index:5;
@@ -52,6 +53,7 @@ header.top{
   padding-block:18px 10px;
   margin-bottom:6px;
 }
+.top-row{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;}
 .brand{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
 .brand h1{font-size:clamp(22px,4vw,30px); letter-spacing:.2px;}
 .brand .stamp{
@@ -59,10 +61,11 @@ header.top{
   text-transform:uppercase; color:var(--accent-ink); background:var(--accent);
   padding:3px 8px; border-radius:3px; white-space:nowrap;
 }
+.lib-trigger{font-size:12.5px; padding:7px 13px; flex-shrink:0;}
 .stats{display:flex; gap:18px; flex-wrap:wrap; margin-top:10px; color:var(--muted); font-size:13px;}
 .stats b{color:var(--fg); font-family:'IBM Plex Mono',monospace;}
 
-.tabs{display:flex; gap:8px; margin-top:16px; border-bottom:1px solid var(--border);}
+.tabs{display:flex; gap:8px; margin-top:16px; border-bottom:1px solid var(--border); flex-wrap:wrap;}
 .tab-btn{
   appearance:none; border:none; background:none; color:var(--muted);
   font:inherit; font-weight:600; font-size:14px; cursor:pointer;
@@ -131,7 +134,7 @@ section.view{padding-top:18px;}
 .pager button:disabled{opacity:.35; cursor:default;}
 .pager .pg-info{color:var(--muted); font-size:13px; font-family:'IBM Plex Mono',monospace;}
 
-/* --- QR skaner --- */
+/* --- QR skaner / umumiy panel --- */
 .panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 18px 20px;}
 .panel + .panel{margin-top:14px;}
 .panel h2{font-size:17px; margin-bottom:10px;}
@@ -151,10 +154,11 @@ section.view{padding-top:18px;}
 }
 .btn-accent{background:var(--accent); color:var(--accent-ink);}
 .btn-ghost{background:var(--surface-2); color:var(--fg); border:1px solid var(--border);}
+.btn:disabled{opacity:.5; cursor:default;}
 .btn-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:4px;}
 
 .scan-msg{margin-top:12px; font-size:13px; color:var(--muted); min-height:18px;}
-.scan-msg.err{color:#d98a74;}
+.scan-msg.err{color:var(--bad);}
 .scan-msg.ok{color:var(--good);}
 
 .manual-row{display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;}
@@ -164,8 +168,8 @@ section.view{padding-top:18px;}
 }
 .manual-row input:focus{border-color:var(--accent);}
 
-/* --- Detail / QR modal --- */
-.overlay{position:fixed; inset:0; background:rgba(10,8,5,.72); display:flex; align-items:flex-start;
+/* --- Detail / QR / Login modal --- */
+.overlay{position:fixed; inset:0; background:rgba(5,8,16,.72); display:flex; align-items:flex-start;
   justify-content:center; padding:28px 16px; overflow-y:auto; z-index:50;}
 .overlay[hidden]{display:none;}
 .detail-card{
@@ -188,6 +192,20 @@ section.view{padding-top:18px;}
   color:var(--muted); margin-bottom:14px;}
 .qr-hint{font-size:12px; color:var(--muted); line-height:1.5; text-align:center;}
 
+/* --- Kutubxonachi forma elementlari --- */
+.lib-form label{font-size:12px; color:var(--muted); display:block; margin-bottom:4px;}
+.lib-form input, .lib-form select{
+  width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px;
+  color:var(--fg); font:inherit; font-size:14px; padding:9px 11px; outline:none;
+}
+.lib-form input:focus, .lib-form select:focus{border-color:var(--accent);}
+.lib-form > div + div{margin-top:10px;}
+.lib-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px;}
+.lib-row{background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:13px; margin-top:10px;}
+.lib-row .row-id{font-size:11px; color:var(--muted); margin-bottom:8px;}
+.lib-empty{color:var(--muted); font-size:13px; padding:14px 2px;}
+.site-footer{text-align:center; color:var(--muted); font-size:12px; padding:34px 0 18px; opacity:.8;}
+
 @media print{
   body *{visibility:hidden;}
   #printTarget, #printTarget *{visibility:visible;}
@@ -205,14 +223,18 @@ section.view{padding-top:18px;}
 <div class="wrap">
 
   <header class="top">
-    <div class="brand">
-      <h1>📚 KIU axborot-resurs markazi</h1>
-      <span class="stamp">kutubxona katalogi</span>
+    <div class="top-row">
+      <div class="brand">
+        <h1>📚 KIU axborot-resurs markazi</h1>
+        <span class="stamp">kutubxona katalogi</span>
+      </div>
+      <button class="btn btn-ghost lib-trigger" id="libTriggerBtn" type="button">🔑 Kutubxonachi</button>
     </div>
     <div class="stats" id="statsLine"></div>
     <nav class="tabs">
       <button class="tab-btn active" data-tab="search" type="button">🔍 Qidiruv</button>
       <button class="tab-btn" data-tab="scan" type="button">📷 QR skaner</button>
+      <button class="tab-btn" data-tab="lib" id="libTabBtn" type="button" hidden>🗂 Kutubxonachi</button>
     </nav>
   </header>
 
@@ -260,6 +282,51 @@ section.view{padding-top:18px;}
     </div>
   </section>
 
+  <section class="view" id="view-lib" hidden>
+    <div class="panel">
+      <h2>Kutubxonachi bo'limi</h2>
+      <p class="note">Kirgan: <strong id="libUserEmail"></strong>. Bu yerda kiritilgan har qanday o'zgarish
+        (nusxa soni, nom, muallif va h.k.) darhol <strong>barcha</strong> saytdan foydalanuvchilarga va
+        o'sha kitobning QR kodini skanerlaganlarga ko'rinadi — QR yorliqni qayta chop etish shart emas.</p>
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="libLogoutBtn" type="button">Chiqish</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>➕ Yangi kitob qo'shish</h2>
+      <div class="lib-form">
+        <div class="lib-grid">
+          <div><label>Nomi</label><input id="newTitle" type="text"></div>
+          <div><label>Muallif</label><input id="newAuthor" type="text"></div>
+          <div><label>Nashr yili</label><input id="newYear" type="text"></div>
+          <div><label>Bo'lim</label>
+            <select id="newCategory">
+              <option>Umumiy fond</option>
+              <option>Badiiy adabiyotlar</option>
+              <option>Siyosiy adabiyotlar</option>
+            </select>
+          </div>
+          <div><label>Nusxa soni</label><input id="newCount" type="number" min="0" step="1" value="1"></div>
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn btn-accent" id="addBookBtn" type="button">➕ Qo'shish</button>
+      </div>
+      <div class="scan-msg" id="addBookMsg"></div>
+    </div>
+
+    <div class="panel">
+      <h2>✏️ Kitobni tahrirlash</h2>
+      <p class="note">Nom, muallif yoki katalog ID bo'yicha qidiring, so'ng kerakli maydonlarni
+        (masalan nusxa sonini 4 → 14) o'zgartirib, <strong>Saqlash</strong>ni bosing.</p>
+      <div class="manual-row">
+        <input id="libSearchInput" type="text" placeholder="Qidiruv: nom, muallif yoki ID" autocomplete="off">
+      </div>
+      <div id="libResults"></div>
+    </div>
+  </section>
+
 </div>
 
 <div class="overlay" id="detailOverlay" hidden>
@@ -269,11 +336,39 @@ section.view{padding-top:18px;}
   </div>
 </div>
 
+<div class="overlay" id="loginOverlay" hidden>
+  <div class="detail-card">
+    <button class="close" id="closeLoginBtn" type="button" aria-label="Yopish">✕</button>
+    <h2 style="font-size:19px; margin-bottom:14px;">🔑 Kutubxonachi kirishi</h2>
+    <div class="lib-form">
+      <div>
+        <label for="loginEmail">Login</label>
+        <input id="loginEmail" type="text" autocomplete="username" placeholder="kutubxonachi@kiu.uz">
+      </div>
+      <div>
+        <label for="loginPassword">Parol</label>
+        <input id="loginPassword" type="password" autocomplete="current-password">
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn btn-accent" id="loginSubmitBtn" type="button">Kirish</button>
+    </div>
+    <div class="scan-msg" id="loginMsg"></div>
+  </div>
+</div>
+
+<div class="site-footer">Developed by Enzo DI 81-26</div>
+
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 (function(){
 "use strict";
+
+var SUPABASE_URL = "https://wkvysshoepcvppwkvygd.supabase.co";
+var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indrdnlzc2hvZXBjdnBwd2t2eWdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyNzk0MzQsImV4cCI6MjEwODg1NTQzNH0.-2fEiS0djdJkd8tFcwUj7z1BLeNjIUceiRNlyOz8g8E";
+var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 var BOOKS = [];
 
@@ -309,9 +404,12 @@ function norm(s){
     .trim();
 }
 
-function initBooksUI(){
+function reindexBooks(){
   BOOKS.forEach(function(b){ b._key = norm(b.title) + " " + norm(b.author); });
+}
 
+function initBooksUI(){
+  reindexBooks();
   var totalCopies = BOOKS.reduce(function(s,b){ return s + (b.count||0); }, 0);
   document.getElementById("statsLine").innerHTML =
     "<span><b class='mono'>" + BOOKS.length.toLocaleString("uz") + "</b> nom kitob</span>" +
@@ -466,19 +564,20 @@ function showDetail(id){
 
 document.getElementById("closeDetailBtn").addEventListener("click", function(){ overlay.hidden = true; });
 overlay.addEventListener("click", function(e){ if (e.target === overlay) overlay.hidden = true; });
-document.addEventListener("keydown", function(e){ if (e.key === "Escape") overlay.hidden = true; });
+document.addEventListener("keydown", function(e){
+  if (e.key === "Escape") { overlay.hidden = true; loginOverlay.hidden = true; }
+});
 
 /* ---------------- Tabs ---------------- */
 var tabBtns = Array.prototype.slice.call(document.querySelectorAll(".tab-btn"));
-var views = { search: document.getElementById("view-search"), scan: document.getElementById("view-scan") };
+var views = { search: document.getElementById("view-search"), scan: document.getElementById("view-scan"), lib: document.getElementById("view-lib") };
+function switchTab(tab){
+  tabBtns.forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-tab") === tab); });
+  Object.keys(views).forEach(function(k){ views[k].hidden = (k !== tab); });
+  if (tab !== "scan") stopScan();
+}
 tabBtns.forEach(function(btn){
-  btn.addEventListener("click", function(){
-    tabBtns.forEach(function(b){ b.classList.remove("active"); });
-    btn.classList.add("active");
-    var tab = btn.getAttribute("data-tab");
-    Object.keys(views).forEach(function(k){ views[k].hidden = (k !== tab); });
-    if (tab !== "scan") stopScan();
-  });
+  btn.addEventListener("click", function(){ switchTab(btn.getAttribute("data-tab")); });
 });
 
 /* ---------------- Kamera skaneri ---------------- */
@@ -574,21 +673,188 @@ document.getElementById("manualGoBtn").addEventListener("click", function(){
   showDetail(id);
 });
 
-/* ---------------- Bazani qismlardan yuklab olish, keyin UI'ni ishga tushirish ---------------- */
-var BOOK_PARTS = ["books_1.json","books_2.json","books_3.json","books_4.json","books_5.json","books_6.json"];
+/* ---------------- Kutubxonachi: kirish / chiqish ---------------- */
+var loginOverlay = document.getElementById("loginOverlay");
+var libTriggerBtn = document.getElementById("libTriggerBtn");
+var libTabBtn = document.getElementById("libTabBtn");
+var libUserEmailEl = document.getElementById("libUserEmail");
+var currentSession = null;
 
-function bootWithError(msg){
-  var el = document.getElementById("statsLine");
-  if (el) el.innerHTML = "<span style='color:#c77'>" + escapeHtml(msg) + "</span>";
+function setLoginMsg(text, kind){
+  var el = document.getElementById("loginMsg");
+  el.textContent = text || "";
+  el.className = "scan-msg" + (kind ? " " + kind : "");
 }
 
-Promise.all(BOOK_PARTS.map(function(url){
-  return fetch(url).then(function(r){
-    if (!r.ok) throw new Error(url + " -> HTTP " + r.status);
-    return r.json();
+function openLogin(){
+  setLoginMsg("");
+  document.getElementById("loginPassword").value = "";
+  loginOverlay.hidden = false;
+}
+document.getElementById("closeLoginBtn").addEventListener("click", function(){ loginOverlay.hidden = true; });
+loginOverlay.addEventListener("click", function(e){ if (e.target === loginOverlay) loginOverlay.hidden = true; });
+
+function onLoggedIn(session){
+  currentSession = session;
+  libTabBtn.hidden = false;
+  libUserEmailEl.textContent = session.user.email;
+  libTriggerBtn.textContent = "🗂 Kutubxonachi panel";
+}
+
+function onLoggedOut(){
+  currentSession = null;
+  libTabBtn.hidden = true;
+  libTriggerBtn.textContent = "🔑 Kutubxonachi";
+  if (!views.lib.hidden) switchTab("search");
+}
+
+libTriggerBtn.addEventListener("click", function(){
+  if (currentSession) { switchTab("lib"); } else { openLogin(); }
+});
+
+document.getElementById("loginSubmitBtn").addEventListener("click", function(){
+  var email = document.getElementById("loginEmail").value.trim();
+  var password = document.getElementById("loginPassword").value;
+  if (!email || !password) { setLoginMsg("Login va parolni kiriting.", "err"); return; }
+  setLoginMsg("Tekshirilyapti...");
+  sb.auth.signInWithPassword({ email: email, password: password }).then(function(res){
+    if (res.error || !res.data || !res.data.session) {
+      setLoginMsg("Login yoki parol xato.", "err");
+      return;
+    }
+    onLoggedIn(res.data.session);
+    loginOverlay.hidden = true;
+    switchTab("lib");
+    renderLibResults();
   });
-})).then(function(parts){
-  BOOKS = parts.reduce(function(acc, arr){ return acc.concat(arr); }, []);
+});
+
+document.getElementById("libLogoutBtn").addEventListener("click", function(){
+  sb.auth.signOut().then(function(){ onLoggedOut(); });
+});
+
+sb.auth.getSession().then(function(res){
+  if (res.data && res.data.session) onLoggedIn(res.data.session);
+});
+
+/* ---------------- Kutubxonachi: qo'shish / tahrirlash ---------------- */
+function setAddMsg(text, kind){
+  var el = document.getElementById("addBookMsg");
+  el.textContent = text || "";
+  el.className = "scan-msg" + (kind ? " " + kind : "");
+}
+
+document.getElementById("addBookBtn").addEventListener("click", function(){
+  var title = document.getElementById("newTitle").value.trim();
+  var author = document.getElementById("newAuthor").value.trim();
+  var year = document.getElementById("newYear").value.trim();
+  var category = document.getElementById("newCategory").value;
+  var count = parseInt(document.getElementById("newCount").value, 10);
+  if (!title) { setAddMsg("Kitob nomini kiriting.", "err"); return; }
+  if (isNaN(count) || count < 0) count = 0;
+  setAddMsg("Qo'shilyapti...");
+  sb.from("books").insert({ title: title, author: author, year: year, category: category, count: count }).select().then(function(res){
+    if (res.error) { setAddMsg("Xatolik: " + res.error.message, "err"); return; }
+    var row = res.data && res.data[0];
+    if (row) {
+      BOOKS.push(row);
+      initBooksUI();
+      renderAll();
+    }
+    setAddMsg("✅ Qo'shildi (ID " + (row ? row.id : "?") + ").", "ok");
+    document.getElementById("newTitle").value = "";
+    document.getElementById("newAuthor").value = "";
+    document.getElementById("newYear").value = "";
+    document.getElementById("newCount").value = "1";
+  });
+});
+
+var libSearchInput = document.getElementById("libSearchInput");
+var libSearchDebounce = null;
+libSearchInput.addEventListener("input", function(){
+  clearTimeout(libSearchDebounce);
+  libSearchDebounce = setTimeout(renderLibResults, 120);
+});
+
+function libRowHtml(b){
+  var opts = CATEGORIES.slice(1).map(function(c){
+    return "<option" + (c.key===b.category?" selected":"") + ">" + escapeHtml(c.key) + "</option>";
+  }).join("");
+  return (
+    "<div class='lib-row' data-id='" + b.id + "'>" +
+      "<div class='row-id mono'>Katalog ID #" + b.id + "</div>" +
+      "<div class='lib-form'><div class='lib-grid'>" +
+        "<div><label>Nomi</label><input class='f-title' value='" + escapeHtml(b.title) + "'></div>" +
+        "<div><label>Muallif</label><input class='f-author' value='" + escapeHtml(b.author||"") + "'></div>" +
+        "<div><label>Nashr yili</label><input class='f-year' value='" + escapeHtml(b.year||"") + "'></div>" +
+        "<div><label>Bo'lim</label><select class='f-cat'>" + opts + "</select></div>" +
+        "<div><label>Nusxa soni</label><input class='f-count' type='number' min='0' step='1' value='" + b.count + "'></div>" +
+      "</div></div>" +
+      "<div class='btn-row' style='margin-top:10px;'>" +
+        "<button class='btn btn-accent save-row' type='button'>💾 Saqlash</button>" +
+        "<span class='row-msg scan-msg' style='margin:0;'></span>" +
+      "</div>" +
+    "</div>"
+  );
+}
+
+function renderLibResults(){
+  var container = document.getElementById("libResults");
+  var q = norm(libSearchInput.value);
+  if (!q) { container.innerHTML = "<div class='lib-empty'>Qidirish uchun nom, muallif yoki ID yozing.</div>"; return; }
+  var matches = BOOKS.filter(function(b){
+    return b._key.indexOf(q) !== -1 || String(b.id) === q.trim();
+  }).slice(0, 30);
+  if (!matches.length) { container.innerHTML = "<div class='lib-empty'>Hech narsa topilmadi.</div>"; return; }
+  container.innerHTML = matches.map(libRowHtml).join("");
+  Array.prototype.forEach.call(container.querySelectorAll(".lib-row"), function(rowEl){
+    var id = parseInt(rowEl.getAttribute("data-id"), 10);
+    var msgEl = rowEl.querySelector(".row-msg");
+    rowEl.querySelector(".save-row").addEventListener("click", function(){
+      var patch = {
+        title: rowEl.querySelector(".f-title").value.trim(),
+        author: rowEl.querySelector(".f-author").value.trim(),
+        year: rowEl.querySelector(".f-year").value.trim(),
+        category: rowEl.querySelector(".f-cat").value,
+        count: parseInt(rowEl.querySelector(".f-count").value, 10)
+      };
+      if (!patch.title) { msgEl.textContent = "Nom bo'sh bo'lmasin."; msgEl.className = "row-msg scan-msg err"; return; }
+      if (isNaN(patch.count) || patch.count < 0) patch.count = 0;
+      msgEl.textContent = "Saqlanyapti..."; msgEl.className = "row-msg scan-msg";
+      sb.from("books").update(patch).eq("id", id).select().then(function(res){
+        if (res.error) { msgEl.textContent = "Xatolik: " + res.error.message; msgEl.className = "row-msg scan-msg err"; return; }
+        var b = BOOKS.filter(function(x){ return x.id === id; })[0];
+        if (b) { Object.assign(b, patch); reindexBooks(); initBooksUI(); renderAll(); }
+        msgEl.textContent = "✅ Saqlandi — barchaga ko'rinadi."; msgEl.className = "row-msg scan-msg ok";
+      });
+    });
+  });
+}
+
+/* ---------------- Bazani Supabase'dan yuklab olish ---------------- */
+function bootWithError(msg){
+  var el = document.getElementById("statsLine");
+  if (el) el.innerHTML = "<span style='color:var(--bad)'>" + escapeHtml(msg) + "</span>";
+}
+
+function loadAllBooks(){
+  var chunk = 1000;
+  var all = [];
+  function pull(start){
+    return sb.from("books").select("*").order("id", { ascending: true }).range(start, start + chunk - 1)
+      .then(function(res){
+        if (res.error) throw res.error;
+        var rows = res.data || [];
+        all = all.concat(rows);
+        if (rows.length === chunk) return pull(start + chunk);
+        return all;
+      });
+  }
+  return pull(0);
+}
+
+loadAllBooks().then(function(rows){
+  BOOKS = rows;
   initBooksUI();
   renderAll();
   var params = new URLSearchParams(location.search);
@@ -597,7 +863,7 @@ Promise.all(BOOK_PARTS.map(function(url){
     showDetail(parseInt(bookParam, 10));
   }
 }).catch(function(err){
-  bootWithError("Ma'lumotlar bazasini yuklab bo'lmadi: " + err.message);
+  bootWithError("Ma'lumotlar bazasini yuklab bo'lmadi: " + (err && err.message ? err.message : err));
 });
 
 })();
