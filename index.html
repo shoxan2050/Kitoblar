@@ -210,6 +210,22 @@ section.view{padding-top:18px;}
 .lib-empty{color:var(--muted); font-size:13px; padding:14px 2px;}
 .site-footer{text-align:center; color:var(--muted); font-size:12px; padding:34px 0 18px; opacity:.8;}
 
+/* --- Yuklanish (boot loader) --- */
+.boot-loader{
+  position:fixed; inset:0; z-index:999; background:var(--bg);
+  display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px;
+  transition:opacity .25s ease;
+}
+.boot-loader[hidden]{display:none;}
+.boot-loader.fade-out{opacity:0; pointer-events:none;}
+.boot-spinner{
+  width:38px; height:38px; border-radius:50%;
+  border:3px solid var(--border); border-top-color:var(--accent);
+  animation:boot-spin .8s linear infinite;
+}
+@keyframes boot-spin{ to{ transform:rotate(360deg); } }
+.boot-loader .boot-text{color:var(--muted); font-size:13.5px; font-family:'Work Sans',system-ui,-apple-system,sans-serif;}
+
 @media print{
   body *{visibility:hidden;}
   #printTarget, #printTarget *{visibility:visible;}
@@ -224,6 +240,10 @@ section.view{padding-top:18px;}
 </style>
 </head>
 <body>
+<div class="boot-loader" id="bootLoader">
+  <div class="boot-spinner"></div>
+  <div class="boot-text" id="bootLoaderText">Kutubxona ma'lumotlari yuklanmoqda...</div>
+</div>
 <div class="wrap">
 
   <header class="top">
@@ -346,6 +366,20 @@ var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 var BOOKS = [];
+
+/* ---------------- Boot loader (bazadan ma'lumot kelguncha) ---------------- */
+var bootLoader = document.getElementById("bootLoader");
+var bootLoaderText = document.getElementById("bootLoaderText");
+var __bootParams = new URLSearchParams(location.search);
+var __bootBookParam = __bootParams.get("book");
+if (__bootBookParam && /^\d+$/.test(__bootBookParam) && bootLoaderText) {
+  bootLoaderText.textContent = "Kitob ma'lumotlari yuklanmoqda...";
+}
+function hideBootLoader(){
+  if (!bootLoader) return;
+  bootLoader.classList.add("fade-out");
+  setTimeout(function(){ bootLoader.hidden = true; }, 260);
+}
 
 var CATEGORIES = [
   {key:"all", label:"Hammasi"},
@@ -738,13 +772,13 @@ loadAllBooks().then(function(rows){
   BOOKS = rows;
   initBooksUI();
   renderAll();
-  var params = new URLSearchParams(location.search);
-  var bookParam = params.get("book");
-  if (bookParam && /^\d+$/.test(bookParam)) {
-    showDetail(parseInt(bookParam, 10));
+  if (__bootBookParam && /^\d+$/.test(__bootBookParam)) {
+    showDetail(parseInt(__bootBookParam, 10));
   }
+  hideBootLoader();
 }).catch(function(err){
   bootWithError("Ma'lumotlar bazasini yuklab bo'lmadi: " + (err && err.message ? err.message : err));
+  hideBootLoader();
 });
 
 })();
