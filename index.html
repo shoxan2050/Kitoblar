@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>KIU — Kitoblar katalogi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ---------------------------------------------------------------------
+   Dizayn: eski kutubxona kartotekasi — chiroq yorug'ida, jigarrang-qora
+   fon, jez (brass) urg'u, kartotekadagi kartochkalarga xos serif+mono.
+   Layout: tepada sticky sarlavha+statistika, ikki ko'rinish (Qidiruv /
+   QR skaner) tab orqali almashadi, natijalar panel-kartalar to'ri.
+--------------------------------------------------------------------- */
+:root{
+  --bg:#171310;
+  --surface:#211b15;
+  --surface-2:#2a2219;
+  --fg:#f1e8d6;
+  --muted:#aa9f8c;
+  --accent:#caa23a;
+  --accent-ink:#1b1507;
+  --border:#3b3123;
+  --good:#8fae72;
+  --cat-general:#caa23a;
+  --cat-fiction:#6fa08f;
+  --cat-political:#b3755f;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--fg);
+  font-family:'Work Sans',system-ui,-apple-system,sans-serif;
+  padding-left:max(16px, env(safe-area-inset-left,0px));
+  padding-right:max(16px, env(safe-area-inset-right,0px));
+}
+h1,h2,h3{font-family:'Fraunces',Georgia,serif; font-weight:600; text-wrap:balance; margin:0;}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace; font-variant-numeric:tabular-nums;}
+img{max-width:100%;}
+[hidden]{display:none!important;}
+a{color:var(--accent);}
+
+.wrap{max-width:980px; margin:0 auto; padding-block:20px 60px;}
+
+header.top{
+  position:sticky; top:0; z-index:5;
+  background:linear-gradient(to bottom, var(--bg) 85%, transparent);
+  padding-block:18px 10px;
+  margin-bottom:6px;
+}
+.brand{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+.brand h1{font-size:clamp(22px,4vw,30px); letter-spacing:.2px;}
+.brand .stamp{
+  font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--accent-ink); background:var(--accent);
+  padding:3px 8px; border-radius:3px; white-space:nowrap;
+}
+.stats{display:flex; gap:18px; flex-wrap:wrap; margin-top:10px; color:var(--muted); font-size:13px;}
+.stats b{color:var(--fg); font-family:'IBM Plex Mono',monospace;}
+
+.tabs{display:flex; gap:8px; margin-top:16px; border-bottom:1px solid var(--border);}
+.tab-btn{
+  appearance:none; border:none; background:none; color:var(--muted);
+  font:inherit; font-weight:600; font-size:14px; cursor:pointer;
+  padding:10px 4px 12px; border-bottom:2px solid transparent;
+  display:flex; align-items:center; gap:7px;
+}
+.tab-btn.active{color:var(--fg); border-bottom-color:var(--accent);}
+.tab-btn:hover{color:var(--fg);}
+
+section.view{padding-top:18px;}
+
+/* --- Qidiruv --- */
+.search-row{display:flex; gap:10px; flex-wrap:wrap;}
+.search-box{
+  flex:1 1 260px; min-width:0; display:flex; align-items:center; gap:8px;
+  background:var(--surface); border:1px solid var(--border); border-radius:10px;
+  padding:11px 14px;
+}
+.search-box input{
+  flex:1; min-width:0; background:none; border:none; outline:none; color:var(--fg);
+  font:inherit; font-size:15px;
+}
+.search-box input::placeholder{color:var(--muted);}
+.search-box svg{flex-shrink:0; color:var(--muted);}
+
+.chips{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;}
+.chip{
+  appearance:none; border:1px solid var(--border); background:var(--surface);
+  color:var(--muted); font:inherit; font-size:12.5px; font-weight:500;
+  border-radius:999px; padding:6px 13px; cursor:pointer; white-space:nowrap;
+}
+.chip.active{background:var(--accent); color:var(--accent-ink); border-color:var(--accent);}
+
+.summary{display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  flex-wrap:wrap; margin-top:16px; color:var(--muted); font-size:13px;}
+.summary b{color:var(--fg);}
+
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; margin-top:14px;}
+.card{
+  background:var(--surface); border:1px solid var(--border); border-radius:12px;
+  padding:14px 15px; display:flex; flex-direction:column; gap:8px; min-width:0;
+}
+.card .cat-badge{
+  align-self:flex-start; font-size:10.5px; font-weight:600; letter-spacing:.04em;
+  text-transform:uppercase; padding:3px 8px; border-radius:5px; color:var(--accent-ink);
+}
+.card h3{font-size:16px; line-height:1.3; font-weight:600;}
+.card .author{color:var(--muted); font-size:13.5px;}
+.card .meta-row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:auto;}
+.card .copies{font-size:12.5px; color:var(--good);}
+.card .qr-btn{
+  appearance:none; border:1px solid var(--border); background:var(--surface-2); color:var(--fg);
+  font:inherit; font-size:12px; font-weight:600; border-radius:7px; padding:6px 10px;
+  cursor:pointer; display:flex; align-items:center; gap:5px; flex-shrink:0;
+}
+.card .qr-btn:hover{border-color:var(--accent); color:var(--accent);}
+
+.empty-state{text-align:center; padding:50px 16px; color:var(--muted);}
+.empty-state .big{font-size:34px; margin-bottom:8px;}
+
+.pager{display:flex; align-items:center; justify-content:center; gap:14px; margin-top:22px;}
+.pager button{
+  appearance:none; border:1px solid var(--border); background:var(--surface); color:var(--fg);
+  font:inherit; font-size:13px; font-weight:600; border-radius:8px; padding:7px 14px; cursor:pointer;
+}
+.pager button:disabled{opacity:.35; cursor:default;}
+.pager .pg-info{color:var(--muted); font-size:13px; font-family:'IBM Plex Mono',monospace;}
+
+/* --- QR skaner --- */
+.panel{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 18px 20px;}
+.panel + .panel{margin-top:14px;}
+.panel h2{font-size:17px; margin-bottom:10px;}
+.note{font-size:13px; color:var(--muted); line-height:1.55;}
+.note strong{color:var(--fg);}
+
+.scan-stage{position:relative; width:100%; max-width:420px; margin:14px auto 0; aspect-ratio:3/4;
+  background:#000; border-radius:12px; overflow:hidden; display:none;}
+.scan-stage.on{display:block;}
+.scan-stage video{width:100%; height:100%; object-fit:cover; display:block;}
+.scan-reticle{position:absolute; inset:14%; border:2px solid var(--accent); border-radius:16px;
+  box-shadow:0 0 0 2000px rgba(0,0,0,.35); pointer-events:none;}
+
+.btn{
+  appearance:none; border:none; border-radius:10px; font:inherit; font-weight:600; font-size:14px;
+  padding:11px 18px; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+}
+.btn-accent{background:var(--accent); color:var(--accent-ink);}
+.btn-ghost{background:var(--surface-2); color:var(--fg); border:1px solid var(--border);}
+.btn-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:4px;}
+
+.scan-msg{margin-top:12px; font-size:13px; color:var(--muted); min-height:18px;}
+.scan-msg.err{color:#d98a74;}
+.scan-msg.ok{color:var(--good);}
+
+.manual-row{display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;}
+.manual-row input{
+  flex:1; min-width:140px; background:var(--bg); border:1px solid var(--border); border-radius:8px;
+  color:var(--fg); font:inherit; font-size:14px; padding:9px 11px; outline:none;
+}
+.manual-row input:focus{border-color:var(--accent);}
+
+/* --- Detail / QR modal --- */
+.overlay{position:fixed; inset:0; background:rgba(10,8,5,.72); display:flex; align-items:flex-start;
+  justify-content:center; padding:28px 16px; overflow-y:auto; z-index:50;}
+.overlay[hidden]{display:none;}
+.detail-card{
+  background:var(--surface); border:1px solid var(--border); border-radius:16px;
+  max-width:420px; width:100%; padding:22px 22px 26px; margin-top:20px;
+}
+.detail-card .close{float:right; background:none; border:none; color:var(--muted); font-size:20px;
+  cursor:pointer; line-height:1; padding:2px;}
+.detail-card .close:hover{color:var(--fg);}
+.detail-card .cat-badge{display:inline-block; font-size:10.5px; font-weight:600; letter-spacing:.04em;
+  text-transform:uppercase; padding:3px 8px; border-radius:5px; color:var(--accent-ink); margin-bottom:10px;}
+.detail-card h2{font-size:21px; line-height:1.3; margin-bottom:4px;}
+.detail-card .author{color:var(--muted); font-size:14.5px; margin-bottom:14px;}
+.detail-rows{display:grid; grid-template-columns:auto 1fr; gap:6px 14px; font-size:13.5px; margin-bottom:16px;}
+.detail-rows dt{color:var(--muted);}
+.detail-rows dd{margin:0; font-family:'IBM Plex Mono',monospace;}
+.qr-wrap{background:#fff; border-radius:10px; padding:16px; display:flex; justify-content:center; margin-bottom:12px;}
+.qr-wrap svg{width:168px; height:168px;}
+.qr-id{text-align:center; font-family:'IBM Plex Mono',monospace; font-size:13px; letter-spacing:.05em;
+  color:var(--muted); margin-bottom:14px;}
+.qr-hint{font-size:12px; color:var(--muted); line-height:1.5; text-align:center;}
+
+@media print{
+  body *{visibility:hidden;}
+  #printTarget, #printTarget *{visibility:visible;}
+  #printTarget{position:fixed; top:40px; left:0; right:0; margin:0 auto; box-shadow:none; border:none;}
+  .detail-card .close, .qr-hint, .btn-row{display:none!important;}
+}
+
+@media (max-width:480px){
+  .detail-rows{grid-template-columns:1fr;}
+  .detail-rows dt{margin-top:6px;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <h1>📚 KIU axborot-resurs markazi</h1>
+      <span class="stamp">kutubxona katalogi</span>
+    </div>
+    <div class="stats" id="statsLine"></div>
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="search" type="button">🔍 Qidiruv</button>
+      <button class="tab-btn" data-tab="scan" type="button">📷 QR skaner</button>
+    </nav>
+  </header>
+
+  <section class="view" id="view-search">
+    <div class="search-row">
+      <label class="search-box">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="searchInput" type="text" placeholder="Muallif yoki kitob nomi bo'yicha qidiring (masalan: Abdulla Oripov)" autocomplete="off">
+      </label>
+    </div>
+    <div class="chips" id="categoryChips"></div>
+    <div class="summary" id="resultSummary"></div>
+    <div class="grid" id="resultGrid"></div>
+    <div class="empty-state" id="emptyState" hidden>
+      <div class="big">📭</div>
+      <div>Hech narsa topilmadi. Boshqa kalit so'z bilan urinib ko'ring.</div>
+    </div>
+    <div class="pager" id="pager"></div>
+  </section>
+
+  <section class="view" id="view-scan" hidden>
+    <div class="panel">
+      <h2>Kamera bilan skanerlash</h2>
+      <p class="note">Kitobga yopishtirilgan QR yorliqni telefon yoki kompyuter kamerasi bilan skanerlang —
+        mos kitob darhol shu yerda ochiladi. <strong>Eslatma:</strong> kamera faqat sahifa <strong>https</strong>
+        orqali (yoki localhost'da) ochilganda ishlaydi — faylni to'g'ridan-to'g'ri ochganda (file://) brauzer
+        kamerani bermaydi, buni biror hostingga (masalan o'zingizning saytingizga) joylashtirgandan keyin sinab ko'ring.</p>
+      <div class="btn-row">
+        <button class="btn btn-accent" id="startScanBtn" type="button">📷 Kamerani yoqish</button>
+        <button class="btn btn-ghost" id="stopScanBtn" type="button" hidden>⏹ To'xtatish</button>
+      </div>
+      <div class="scan-stage" id="scanStage">
+        <video id="scanVideo" playsinline muted></video>
+        <div class="scan-reticle"></div>
+      </div>
+      <div class="scan-msg" id="scanMsg"></div>
+    </div>
+    <div class="panel">
+      <h2>Qo'lda kiritish</h2>
+      <p class="note">QR ishlamasa, yorliq ostidagi raqamni (ID) shu yerga yozing.</p>
+      <div class="manual-row">
+        <input id="manualIdInput" type="text" inputmode="numeric" placeholder="Masalan: 1320">
+        <button class="btn btn-ghost" id="manualGoBtn" type="button">Ko'rsat</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="overlay" id="detailOverlay" hidden>
+  <div class="detail-card" id="printTarget">
+    <button class="close" id="closeDetailBtn" type="button" aria-label="Yopish">✕</button>
+    <div id="detailBody"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script>
+(function(){
+"use strict";
+
+var BOOKS = [];
+
+var CATEGORIES = [
+  {key:"all", label:"Hammasi"},
+  {key:"Umumiy fond", label:"Umumiy fond"},
+  {key:"Badiiy adabiyotlar", label:"Badiiy adabiyotlar"},
+  {key:"Siyosiy adabiyotlar", label:"Siyosiy adabiyotlar"}
+];
+var CAT_CLASS = {
+  "Umumiy fond":"cat-general",
+  "Badiiy adabiyotlar":"cat-fiction",
+  "Siyosiy adabiyotlar":"cat-political"
+};
+var PAGE_SIZE = 24;
+
+var state = { query:"", category:"all", page:1 };
+
+function escapeHtml(s){
+  return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
+
+/* Apostrof variantlarini (ʻ ʼ ʹ ʽ ` ´ ' ') bitta ko'rinishga tushiramiz va qidiruv
+   uchun butunlay olib tashlaymiz — shunda "o'zbek", "ozbek", "oʻzbek" kabi barcha
+   yozilishi xato/boshqacha variantlar bir xil deb topiladi. */
+function norm(s){
+  return String(s==null?"":s)
+    .toLowerCase()
+    .replace(/[ʻʼʹʽ`´‘’']/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function initBooksUI(){
+  BOOKS.forEach(function(b){ b._key = norm(b.title) + " " + norm(b.author); });
+
+  var totalCopies = BOOKS.reduce(function(s,b){ return s + (b.count||0); }, 0);
+  document.getElementById("statsLine").innerHTML =
+    "<span><b class='mono'>" + BOOKS.length.toLocaleString("uz") + "</b> nom kitob</span>" +
+    "<span><b class='mono'>" + totalCopies.toLocaleString("uz") + "</b> nusxa jamida</span>" +
+    "<span><b class='mono'>3</b> bo'lim</span>";
+}
+
+function renderChips(){
+  var el = document.getElementById("categoryChips");
+  el.innerHTML = CATEGORIES.map(function(c){
+    return "<button type='button' class='chip" + (state.category===c.key?" active":"") +
+      "' data-cat='" + escapeHtml(c.key) + "'>" + escapeHtml(c.label) + "</button>";
+  }).join("");
+  Array.prototype.forEach.call(el.querySelectorAll(".chip"), function(btn){
+    btn.addEventListener("click", function(){
+      state.category = btn.getAttribute("data-cat");
+      state.page = 1;
+      renderAll();
+    });
+  });
+}
+
+function getFiltered(){
+  var q = norm(state.query);
+  return BOOKS.filter(function(b){
+    if (state.category !== "all" && b.category !== state.category) return false;
+    if (q && b._key.indexOf(q) === -1) return false;
+    return true;
+  });
+}
+
+function qrSvgFor(id){
+  var url = location.origin + location.pathname + "?book=" + id;
+  var qr = qrcode(0, "M");
+  qr.addData(url);
+  qr.make();
+  return qr.createSvgTag({ cellSize: 4, margin: 2 });
+}
+
+function bookCardHtml(b){
+  var catClass = CAT_CLASS[b.category] || "cat-general";
+  return (
+    "<div class='card' data-id='" + b.id + "'>" +
+      "<span class='cat-badge' style='background:var(--" + catClass + ")'>" + escapeHtml(b.category) + "</span>" +
+      "<h3>" + escapeHtml(b.title) + "</h3>" +
+      "<div class='author'>" + escapeHtml(b.author || "Muallif ko'rsatilmagan") + (b.year ? " · " + escapeHtml(b.year) : "") + "</div>" +
+      "<div class='meta-row'>" +
+        "<span class='copies mono'>" + b.count + " nusxa</span>" +
+        "<button type='button' class='qr-btn' data-qr='" + b.id + "'>🏷 QR</button>" +
+      "</div>" +
+    "</div>"
+  );
+}
+
+function renderResults(){
+  var filtered = getFiltered();
+  var totalCopiesFiltered = filtered.reduce(function(s,b){ return s + (b.count||0); }, 0);
+  var summaryEl = document.getElementById("resultSummary");
+  var qLabel = state.query.trim();
+  if (qLabel) {
+    summaryEl.innerHTML = "<span>“<b>" + escapeHtml(qLabel) + "” bo'yicha: <b>" +
+      filtered.length + "</b> ta nom, jami <b>" + totalCopiesFiltered + "</b> nusxa</span>";
+  } else {
+    summaryEl.innerHTML = "<span><b>" + filtered.length + "</b> ta nom ko'rsatilmoqda, jami <b>" +
+      totalCopiesFiltered + "</b> nusxa</span>";
+  }
+
+  var pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  if (state.page > pageCount) state.page = pageCount;
+  var start = (state.page - 1) * PAGE_SIZE;
+  var pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+  var gridEl = document.getElementById("resultGrid");
+  var emptyEl = document.getElementById("emptyState");
+  if (!pageItems.length) {
+    gridEl.innerHTML = "";
+    emptyEl.hidden = false;
+  } else {
+    emptyEl.hidden = true;
+    gridEl.innerHTML = pageItems.map(bookCardHtml).join("");
+    Array.prototype.forEach.call(gridEl.querySelectorAll(".qr-btn"), function(btn){
+      btn.addEventListener("click", function(e){
+        e.stopPropagation();
+        showDetail(parseInt(btn.getAttribute("data-qr"), 10));
+      });
+    });
+  }
+
+  var pagerEl = document.getElementById("pager");
+  if (pageCount <= 1) {
+    pagerEl.innerHTML = "";
+  } else {
+    pagerEl.innerHTML =
+      "<button id='prevPg' type='button'" + (state.page<=1?" disabled":"") + ">← Oldingi</button>" +
+      "<span class='pg-info'>" + state.page + " / " + pageCount + "</span>" +
+      "<button id='nextPg' type='button'" + (state.page>=pageCount?" disabled":"") + ">Keyingi →</button>";
+    var prevBtn = document.getElementById("prevPg");
+    var nextBtn = document.getElementById("nextPg");
+    if (prevBtn) prevBtn.addEventListener("click", function(){ state.page--; renderAll(); window.scrollTo({top:0,behavior:"smooth"}); });
+    if (nextBtn) nextBtn.addEventListener("click", function(){ state.page++; renderAll(); window.scrollTo({top:0,behavior:"smooth"}); });
+  }
+}
+
+function renderAll(){
+  renderChips();
+  renderResults();
+}
+
+var searchInput = document.getElementById("searchInput");
+var searchDebounce = null;
+searchInput.addEventListener("input", function(){
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(function(){
+    state.query = searchInput.value;
+    state.page = 1;
+    renderResults();
+  }, 120);
+});
+
+/* ---------------- Detail / QR modal ---------------- */
+var overlay = document.getElementById("detailOverlay");
+var detailBody = document.getElementById("detailBody");
+
+function showDetail(id){
+  var b = BOOKS.filter(function(x){ return x.id === id; })[0];
+  if (!b) {
+    detailBody.innerHTML = "<p>Bu ID (" + escapeHtml(id) + ") bo'yicha kitob topilmadi.</p>";
+    overlay.hidden = false;
+    return;
+  }
+  var catClass = CAT_CLASS[b.category] || "cat-general";
+  detailBody.innerHTML =
+    "<span class='cat-badge' style='background:var(--" + catClass + ")'>" + escapeHtml(b.category) + "</span>" +
+    "<h2>" + escapeHtml(b.title) + "</h2>" +
+    "<div class='author'>" + escapeHtml(b.author || "Muallif ko'rsatilmagan") + "</div>" +
+    "<dl class='detail-rows'>" +
+      "<dt>Nashr yili</dt><dd>" + escapeHtml(b.year || "—") + "</dd>" +
+      "<dt>Nusxa soni</dt><dd>" + b.count + "</dd>" +
+      "<dt>Katalog ID</dt><dd>#" + b.id + "</dd>" +
+    "</dl>" +
+    "<div class='qr-wrap'>" + qrSvgFor(b.id) + "</div>" +
+    "<div class='qr-id mono'>ID: " + b.id + "</div>" +
+    "<div class='btn-row' style='justify-content:center; margin-bottom:10px;'>" +
+      "<button class='btn btn-ghost' id='printQrBtn' type='button'>🖨️ Yorliqni chop etish</button>" +
+    "</div>" +
+    "<p class='qr-hint'>Bu QR kodni chop etib kitobga yopishtiring. Keyinchalik oddiy telefon kamerasi " +
+    "bilan skanerlansa, shu sahifa aynan shu kitob ma'lumoti bilan ochiladi.</p>";
+  overlay.hidden = false;
+  var printBtn = document.getElementById("printQrBtn");
+  if (printBtn) printBtn.addEventListener("click", function(){ window.print(); });
+}
+
+document.getElementById("closeDetailBtn").addEventListener("click", function(){ overlay.hidden = true; });
+overlay.addEventListener("click", function(e){ if (e.target === overlay) overlay.hidden = true; });
+document.addEventListener("keydown", function(e){ if (e.key === "Escape") overlay.hidden = true; });
+
+/* ---------------- Tabs ---------------- */
+var tabBtns = Array.prototype.slice.call(document.querySelectorAll(".tab-btn"));
+var views = { search: document.getElementById("view-search"), scan: document.getElementById("view-scan") };
+tabBtns.forEach(function(btn){
+  btn.addEventListener("click", function(){
+    tabBtns.forEach(function(b){ b.classList.remove("active"); });
+    btn.classList.add("active");
+    var tab = btn.getAttribute("data-tab");
+    Object.keys(views).forEach(function(k){ views[k].hidden = (k !== tab); });
+    if (tab !== "scan") stopScan();
+  });
+});
+
+/* ---------------- Kamera skaneri ---------------- */
+var scanStage = document.getElementById("scanStage");
+var scanVideo = document.getElementById("scanVideo");
+var scanMsg = document.getElementById("scanMsg");
+var startBtn = document.getElementById("startScanBtn");
+var stopBtn = document.getElementById("stopScanBtn");
+var scanCanvas = document.createElement("canvas");
+var scanCtx = scanCanvas.getContext("2d", { willReadFrequently: true });
+var scanStream = null;
+var scanRaf = null;
+
+function setScanMsg(text, kind){
+  scanMsg.textContent = text || "";
+  scanMsg.className = "scan-msg" + (kind ? " " + kind : "");
+}
+
+function extractBookId(text){
+  if (!text) return null;
+  var m = text.match(/[?&]book=(\d+)/);
+  if (m) return parseInt(m[1], 10);
+  if (/^\d+$/.test(text.trim())) return parseInt(text.trim(), 10);
+  return null;
+}
+
+function tick(){
+  if (!scanStream) return;
+  if (scanVideo.readyState === scanVideo.HAVE_ENOUGH_DATA) {
+    scanCanvas.width = scanVideo.videoWidth;
+    scanCanvas.height = scanVideo.videoHeight;
+    scanCtx.drawImage(scanVideo, 0, 0, scanCanvas.width, scanCanvas.height);
+    var imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+    var result = null;
+    try { result = jsQR(imageData.data, imageData.width, imageData.height); } catch (e) {}
+    if (result && result.data) {
+      var id = extractBookId(result.data);
+      if (id != null && BOOKS.some(function(b){ return b.id === id; })) {
+        setScanMsg("✅ Topildi!", "ok");
+        stopScan();
+        showDetail(id);
+        return;
+      } else {
+        setScanMsg("QR o'qildi, lekin bu katalogga tegishli emas.", "err");
+      }
+    }
+  }
+  scanRaf = requestAnimationFrame(tick);
+}
+
+function startScan(){
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    setScanMsg("Bu brauzer kamerani qo'llamaydi yoki sahifa xavfsiz (https) kontekstda emas.", "err");
+    return;
+  }
+  setScanMsg("Kamera ruxsatini so'rayapmiz...");
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+    .then(function(stream){
+      scanStream = stream;
+      scanVideo.srcObject = stream;
+      scanVideo.play();
+      scanStage.classList.add("on");
+      startBtn.hidden = true;
+      stopBtn.hidden = false;
+      setScanMsg("Kameraga QR kodni ko'rsating...");
+      scanRaf = requestAnimationFrame(tick);
+    })
+    .catch(function(err){
+      setScanMsg("Kameraga ruxsat berilmadi yoki topilmadi (" + err.name + "). Sahifa https orqali ochilganini tekshiring.", "err");
+    });
+}
+
+function stopScan(){
+  if (scanRaf) cancelAnimationFrame(scanRaf);
+  scanRaf = null;
+  if (scanStream) {
+    scanStream.getTracks().forEach(function(t){ t.stop(); });
+    scanStream = null;
+  }
+  scanStage.classList.remove("on");
+  startBtn.hidden = false;
+  stopBtn.hidden = true;
+}
+
+startBtn.addEventListener("click", startScan);
+stopBtn.addEventListener("click", function(){ stopScan(); setScanMsg(""); });
+
+document.getElementById("manualGoBtn").addEventListener("click", function(){
+  var input = document.getElementById("manualIdInput");
+  var id = extractBookId(input.value);
+  if (id == null) { setScanMsg("Raqamni to'g'ri kiriting."); return; }
+  if (!BOOKS.some(function(b){ return b.id === id; })) { setScanMsg("Bu ID bo'yicha kitob topilmadi.", "err"); return; }
+  showDetail(id);
+});
+
+/* ---------------- Bazani qismlardan yuklab olish, keyin UI'ni ishga tushirish ---------------- */
+var BOOK_PARTS = ["books_1.json","books_2.json","books_3.json","books_4.json","books_5.json","books_6.json"];
+
+function bootWithError(msg){
+  var el = document.getElementById("statsLine");
+  if (el) el.innerHTML = "<span style='color:#c77'>" + escapeHtml(msg) + "</span>";
+}
+
+Promise.all(BOOK_PARTS.map(function(url){
+  return fetch(url).then(function(r){
+    if (!r.ok) throw new Error(url + " -> HTTP " + r.status);
+    return r.json();
+  });
+})).then(function(parts){
+  BOOKS = parts.reduce(function(acc, arr){ return acc.concat(arr); }, []);
+  initBooksUI();
+  renderAll();
+  var params = new URLSearchParams(location.search);
+  var bookParam = params.get("book");
+  if (bookParam && /^\d+$/.test(bookParam)) {
+    showDetail(parseInt(bookParam, 10));
+  }
+}).catch(function(err){
+  bootWithError("Ma'lumotlar bazasini yuklab bo'lmadi: " + err.message);
+});
+
+})();
+</script>
+</body>
+</html>
