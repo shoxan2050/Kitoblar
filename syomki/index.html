@@ -52,6 +52,10 @@ h1{font:700 clamp(32px,6vw,44px)/1.05 Unbounded,Manrope,sans-serif;letter-spacin
 .svl li::before{content:'▸ ';color:#a88d74}
 textarea{width:100%;font-size:17px;min-height:110px;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--bg);resize:vertical;font-family:inherit;color:inherit;line-height:1.45}
 .hint{font-size:14px;color:var(--muted);margin-top:6px}
+.pl{display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:15px;font-weight:700;color:var(--ink);overflow-wrap:anywhere;line-height:1.35}
+.pl svg{width:16px;height:16px;flex:none;margin-top:2px;color:var(--tan)}
+.spl{display:flex;align-items:flex-start;gap:8px;margin:0 0 12px;color:#dccbb6;font-weight:700;font-size:16px;line-height:1.4;overflow-wrap:anywhere}
+.spl svg{width:18px;height:18px;flex:none;margin-top:2px;color:#a88d74}
 .lh{color:var(--rec);font-size:15px;font-weight:700;line-height:1.3;margin-top:2px}
 .row.late{border-color:var(--rec)}
 .row.done .tm,.row.done .nm{color:var(--muted)}
@@ -130,6 +134,8 @@ input{width:100%;font-size:18px;min-height:54px;border:1.5px solid var(--line);b
     <label class="fl" for="f-videos">Какие видео снимаем?</label>
     <textarea id="f-videos" maxlength="2000" placeholder="Например:&#10;3 ошибки при запуске рилс&#10;Как я пришёл в маркетинг"></textarea>
     <div class="hint">Каждое видео — с новой строки</div>
+    <label class="fl" for="f-place">Где снимаем?</label>
+    <input id="f-place" maxlength="200" placeholder="Студия, адрес или ориентир" autocomplete="off">
     <button type="submit" class="save" id="save">Сохранить</button>
     <button type="button" class="del" id="del">Удалить съёмку</button>
   </form>
@@ -145,6 +151,7 @@ const WD=['воскресенье','понедельник','вторник','с
 const FD=['день','дня','дней'],FS=['съёмка','съёмки','съёмок'];
 const WS=['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
 const MN=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const PIN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
 const CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -162,7 +169,7 @@ function monday(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.
 let wk=monday(new Date()),mSel=null;const calM=new Date(new Date().getFullYear(),new Date().getMonth(),1);
 let items=[],mode='loading',now=new Date(),editing=null,delArm=false,saving=false,tt=0,openPast=false;
 const today=()=>ymd(now);
-const clean=o=>({id:String(o.id),project:String(o.project||'Без названия').slice(0,120),date:isD(o.date)?o.date:ymd(new Date()),time:/^\d{2}:\d{2}/.test(o.time||'')?o.time.slice(0,5):'',videos:String(o.videos||'').slice(0,2000),done:!!o.done,created:o.created_at||''});
+const clean=o=>({id:String(o.id),project:String(o.project||'Без названия').slice(0,120),date:isD(o.date)?o.date:ymd(new Date()),time:/^\d{2}:\d{2}/.test(o.time||'')?o.time.slice(0,5):'',videos:String(o.videos||'').slice(0,2000),place:String(o.place||'').slice(0,200),done:!!o.done,created:o.created_at||''});
 const isLate=x=>!x.done&&dtOf(x)<now;
 const dayDiff=s=>Math.round((pd(s)-pd(today()))/864e5);
 const dm=d=>d.getDate()+' '+MG[d.getMonth()]+(d.getFullYear()!==now.getFullYear()?' '+d.getFullYear():'');
@@ -178,14 +185,14 @@ function renderTop(){
   const x=sorted().find(i=>!i.done&&dtOf(i)>=now);
   if(!x){sl.innerHTML='<div class="lb">Следующая съёмка</div><div class="pv">Пока пусто</div><div class="when">Нажми «Добавить съёмку»</div>';return}
   const ms=dtOf(x)-now,v=vids(x);
-  sl.innerHTML=`<div class="lb">Следующая съёмка</div><div class="pv">${esc(x.project)}</div>${v.length?`<ul class="svl">${v.slice(0,3).map(t=>`<li>${esc(t)}</li>`).join('')}${v.length>3?`<li>и ещё ${v.length-3}</li>`:''}</ul>`:''}<div class="when">${esc(dayName(x.date)+(dayDiff(x.date)<2?' в ':', в ')+x.time)}</div><div class="cd">${ms<864e5?'<span class="rec"></span>':''}через ${esc(dur(ms))}</div>`;
+  sl.innerHTML=`<div class="lb">Следующая съёмка</div><div class="pv">${esc(x.project)}</div>${v.length?`<ul class="svl">${v.slice(0,3).map(t=>`<li>${esc(t)}</li>`).join('')}${v.length>3?`<li>и ещё ${v.length-3}</li>`:''}</ul>`:''}${x.place?`<div class="spl">${PIN}<span>${esc(x.place)}</span></div>`:''}<div class="when">${esc(dayName(x.date)+(dayDiff(x.date)<2?' в ':', в ')+x.time)}</div><div class="cd">${ms<864e5?'<span class="rec"></span>':''}через ${esc(dur(ms))}</div>`;
 }
 function row(x){
   const late=isLate(x),v=vids(x);
   return `<div class="row${x.done?' done':''}${late?' late':''}" data-id="${esc(x.id)}" tabindex="0">
 <button class="ck" data-ck="${esc(x.id)}" aria-label="${x.done?'Снято':'Отметить: снято'}" aria-pressed="${x.done}">${CHECK}</button>
 <span class="tm">${esc(x.time||'—')}</span>
-<span><div class="nm">${esc(x.project)}</div>${v.length?`<ul class="vl">${v.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`:''}${late?'<div class="lh">Время прошло. Сняли?</div>':''}</span></div>`;
+<span><div class="nm">${esc(x.project)}</div>${v.length?`<ul class="vl">${v.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`:''}${x.place?`<div class="pl">${PIN}<span>${esc(x.place)}</span></div>`:''}${late?'<div class="lh">Время прошло. Сняли?</div>':''}</span></div>`;
 }
 function byDay(l){let h='',i=0;while(i<l.length){const d=l[i].date,g=[];while(i<l.length&&l[i].date===d)g.push(l[i++]);h+=`<div class="day${d===today()?' t':''}">${esc(dayName(d))}</div>`+g.map(row).join('')}return h}
 const loadingH='<p class="empty">Загружаю…</p>';
@@ -261,6 +268,7 @@ function openSheet(id,date){
   $('#f-date').value=editing?editing.date:(date||today());
   $('#f-time').value=editing?editing.time:'10:00';
   $('#f-videos').value=editing?editing.videos:'';
+  $('#f-place').value=editing?editing.place:'';
   setQuick();
   $('#fh').textContent=editing?'Изменить съёмку':'Новая съёмка';
   delArm=false;$('#del').textContent='Удалить съёмку';$('#del').style.display=editing?'':'none';
@@ -271,14 +279,14 @@ function closeSheet(){$('#ov').classList.remove('on');document.body.style.overfl
 $('#fm').addEventListener('submit',async e=>{
   e.preventDefault();if(saving)return;
   const project=$('#f-name').value.trim(),date=$('#f-date').value,time=$('#f-time').value.slice(0,5);
-  const videos=$('#f-videos').value.split('\n').map(v=>v.trim()).filter(Boolean).join('\n').slice(0,2000);
+  const videos=$('#f-videos').value.split('\n').map(v=>v.trim()).filter(Boolean).join('\n').slice(0,2000),place=$('#f-place').value.trim().slice(0,200);
   if(!project){toast('Напиши название проекта');$('#f-name').focus();return}
   if(!isD(date)){toast('Выбери день');return}
   if(!/^\d{2}:\d{2}$/.test(time)){toast('Укажи время');return}
   if(!sb){failed();return}
   saving=true;$('#save').textContent='Сохраняю…';
   const id=editing?editing.id:null;
-  const res=id?await sb.from(T).update({project,date,time,videos}).eq('id',id).select().single():await sb.from(T).insert({project,date,time,videos}).select().single();
+  const res=id?await sb.from(T).update({project,date,time,videos,place}).eq('id',id).select().single():await sb.from(T).insert({project,date,time,videos,place}).select().single();
   saving=false;$('#save').textContent='Сохранить';
   if(res.error){failed();return}
   upsertLocal(res.data);closeSheet();render();toast(id?'Сохранено':'Съёмка добавлена');
@@ -290,7 +298,7 @@ async function delClick(){
   const {error}=await sb.from(T).delete().eq('id',x.id);
   if(error){failed();return}
   items=items.filter(i=>i.id!==x.id);render();
-  toast('Удалено','Вернуть',async()=>{const r=await sb.from(T).insert({id:x.id,project:x.project,date:x.date,time:x.time,videos:x.videos,done:x.done}).select().single();if(r.error){failed();return}upsertLocal(r.data);render()});
+  toast('Удалено','Вернуть',async()=>{const r=await sb.from(T).insert({id:x.id,project:x.project,date:x.date,time:x.time,videos:x.videos,place:x.place,done:x.done}).select().single();if(r.error){failed();return}upsertLocal(r.data);render()});
 }
 
 document.addEventListener('click',e=>{
